@@ -1,0 +1,19 @@
+# Development Dockerfile - includes dev dependencies and hot reload
+# Stage 1: Install all dependencies (including dev dependencies)
+FROM node:20-alpine AS dev-deps
+WORKDIR /node-app
+COPY package.json package-lock.json ./
+RUN npm ci
+
+# Stage 2: Development runtime with hot reload
+FROM node:20-alpine AS dev
+WORKDIR /node-app
+# Copy node_modules from deps stage
+COPY --from=dev-deps /node-app/node_modules ./node_modules
+# Copy source files (will be overridden by volume mounts in docker-compose)
+COPY package.json package-lock.json ./
+COPY src ./src
+ENV NODE_ENV=development
+EXPOSE 3000
+CMD ["npm", "run", "dev"]
+
