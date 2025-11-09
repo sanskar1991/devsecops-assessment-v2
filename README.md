@@ -140,7 +140,7 @@ This approach:
 
 ### Dependency Override
 
-The `package.json` includes an override for `cross-spawn` to address a vulnerability:
+The `package.json` includes an override for `cross-spawn` to address a vulnerability (CVE-2024-21538):
 
 ```json
 "overrides": {
