@@ -75,7 +75,7 @@ jobs:
       # --- Snyk scans: dependencies & container ---
       - name: Setup Snyk
         if: steps.quality_gate.outcome == 'success'
-        uses: snyk/actions/setup@v4
+        uses: snyk/actions/setup@v1
         with:
           token: ${{ secrets.SNYK_TOKEN }}
 
