@@ -37,10 +37,6 @@ jobs:
           cache: 'npm'
           cache-dependency-path: node-app/package-lock.json
 
-      - name: Check lockfile exists
-        run: |
-          test -f node-app/package-lock.json || (echo "Missing node-app/package-lock.json"; exit 1)
-      
       - name: Install deps
         working-directory: node-app
         run: npm ci
@@ -55,6 +51,7 @@ jobs:
             -Dsonar.organization=${{ env.SONAR_ORG }}
             -Dsonar.projectKey=${{ env.SONAR_PROJECT_KEY }}
             -Dsonar.projectName=${{ env.SONAR_PROJECT_NAME }}
+            -Dsonar.projectBaseDir=node-app
 
       - name: SonarCloud Quality Gate
         id: quality_gate
