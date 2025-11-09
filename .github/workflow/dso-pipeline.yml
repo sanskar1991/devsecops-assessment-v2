@@ -1,0 +1,111 @@
+name: SecOps-Checklist
+
+on:
+  push:
+    branches: [ master ]
+  pull_request:
+    branches: [ master ]
+
+permissions:
+  contents: read
+  packages: write
+  security-events: write
+  id-token: write
+
+env:
+  REGISTRY: ghcr.io
+  IMAGE_NAME: ${{ vars.IMAGE_NAME }}
+  SONAR_ORG: ${{ vars.SONAR_ORG }}
+  SONAR_PROJECT_KEY: ${{ vars.SONAR_PROJECT_KEY }}
+  SONAR_PROJECT_NAME: ${{ vars.SONAR_PROJECT_NAME }}
+
+jobs:
+  build_and_scan:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install deps
+        run: npm ci
+
+      # --- SonarCloud: Static analysis / Quality Gate ---
+      - name: SonarCloud Scan
+        uses: SonarSource/sonarcloud-github-action@v2
+        env:
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+        with:
+          args: >
+            -Dsonar.organization=${{ env.SONAR_ORG }}
+            -Dsonar.projectKey=${{ env.SONAR_PROJECT_KEY }}
+            -Dsonar.projectName=${{ env.SONAR_PROJECT_NAME }}
+
+      - name: SonarCloud Quality Gate
+        id: quality_gate
+        uses: SonarSource/sonarcloud-github-action@v2
+        with:
+          check_quality_gate: true
+        env:
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+
+      # --- Build image (only if Sonar Quality Gate passed) ---
+      - name: Set image tag
+        id: meta
+        run: |
+          SHA=${GITHUB_SHA::7}
+          TAG="${{ env.IMAGE_NAME }}:${SHA}"
+          echo "TAG=$TAG" >> $GITHUB_OUTPUT
+          echo "LATEST=${{ env.IMAGE_NAME }}:latest" >> $GITHUB_OUTPUT
+
+      - name: Build Docker image
+        if: steps.quality_gate.outcome == 'success'
+        run: |
+          docker build -t "${{ steps.meta.outputs.TAG }}" -t "${{ steps.meta.outputs.LATEST }}" .
+
+      # --- Snyk scans: dependencies & container ---
+      - name: Setup Snyk
+        if: steps.quality_gate.outcome == 'success'
+        uses: snyk/actions/setup@v4
+        with:
+          token: ${{ secrets.SNYK_TOKEN }}
+
+      - name: Snyk Open Source (Node deps)
+        if: steps.quality_gate.outcome == 'success'
+        run: |
+          # Fail on High+ (adjust threshold as required by assessment)
+          snyk test --severity-threshold=high
+        env:
+          SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
+
+      - name: Snyk Container (built image)
+        if: steps.quality_gate.outcome == 'success'
+        run: |
+          # Scan final image; fail on High+
+          snyk container test "${{ steps.meta.outputs.LATEST }}" --severity-threshold=high
+        env:
+          SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
+
+      # --- Push image only if all gates passed ---
+      - name: Login to GHCR
+        if: ${{ success() && steps.quality_gate.outcome == 'success' }}
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Push image
+        if: ${{ success() && steps.quality_gate.outcome == 'success' }}
+        run: |
+          docker push "${{ steps.meta.outputs.TAG }}"
+          docker push "${{ steps.meta.outputs.LATEST }}"
