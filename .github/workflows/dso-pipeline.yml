@@ -37,7 +37,12 @@ jobs:
           cache: 'npm'
           cache-dependency-path: node-app/package-lock.json
 
+      - name: Check lockfile exists
+        run: |
+          test -f node-app/package-lock.json || (echo "Missing node-app/package-lock.json"; exit 1)
+      
       - name: Install deps
+        working-directory: node-app
         run: npm ci
 
       # --- SonarCloud: Static analysis / Quality Gate ---
