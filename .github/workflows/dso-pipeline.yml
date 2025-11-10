@@ -90,14 +90,16 @@ jobs:
 
       - name: Snyk Open Source (Node deps)
         if: steps.quality_gate.outcome == 'success'
+        working-directory: node-app
         run: |
-          # Fail on High+ (adjust threshold as required by assessment)
+          # Fail on High+
           snyk test --severity-threshold=high
         env:
           SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
 
       - name: Snyk Container (built image)
         if: steps.quality_gate.outcome == 'success'
+        working-directory: node-app
         run: |
           # Scan final image; fail on High+
           snyk container test "${{ steps.meta.outputs.LATEST }}" --severity-threshold=high
