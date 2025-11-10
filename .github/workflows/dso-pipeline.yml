@@ -57,6 +57,11 @@ jobs:
         id: quality_gate
         uses: SonarSource/sonarcloud-github-action@v2
         with:
+          args: >
+            -Dsonar.organization=${{ env.SONAR_ORG }}
+            -Dsonar.projectKey=${{ env.SONAR_PROJECT_KEY }}
+            -Dsonar.projectName=${{ env.SONAR_PROJECT_NAME }}
+            -Dsonar.projectBaseDir=node-app
           check_quality_gate: true
         env:
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
