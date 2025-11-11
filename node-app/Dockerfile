@@ -30,6 +30,9 @@ WORKDIR /node-app
 # Set production environment
 ENV NODE_ENV=production
 
+# Remove global npm modules to reduce image size
+RUN rm -rf /usr/local/lib/node_modules
+
 # Non-root user for security
 RUN addgroup -S nodegrp && adduser -S nodeuser -G nodegrp
 
