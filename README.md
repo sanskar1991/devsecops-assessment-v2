@@ -133,4 +133,4 @@ This approach:
 - Reduces final image size
 - Improves security by excluding dev dependencies
 - Uses non-root user for container security
-- Includes health checks for container orchestration
+- Includes health checks for container orchestrations
