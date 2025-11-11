@@ -7,7 +7,6 @@
     "scripts": {
       "start": "node src/server.js",
       "dev": "NODE_ENV=development nodemon src/server.js",
-      "lint": "eslint .",
       "health": "node -e \"fetch('http://localhost:'+(process.env.PORT||3000)+'/healthz').then(r=>r.text()).then(console.log).catch(e=>{console.error(e);process.exit(1)})\""
     },
     "engines": {
@@ -26,15 +25,7 @@
       "pino-http": "^10.3.0"
     },
     "devDependencies": {
-      "eslint": "^8.57.0",
-      "eslint-config-standard": "^17.1.0",
-      "eslint-plugin-import": "^2.31.0",
-      "eslint-plugin-n": "^16.0.0",
-      "eslint-plugin-promise": "^6.6.0",
       "nodemon": "^3.1.7"
-    },
-    "overrides": {
-      "cross-spawn": "7.0.5"
     }
   }
   

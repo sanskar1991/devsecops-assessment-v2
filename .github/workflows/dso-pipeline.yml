@@ -2,7 +2,7 @@ name: SecOps-Checklist
 
 on:
   push:
-    branches: [ master ]
+    branches: [ master, dev, feature/* ]
   pull_request:
     branches: [ master ]
 
@@ -35,8 +35,10 @@ jobs:
         with:
           node-version: '20'
           cache: 'npm'
+          cache-dependency-path: node-app/package-lock.json
 
       - name: Install deps
+        working-directory: node-app
         run: npm ci
 
       # --- SonarCloud: Static analysis / Quality Gate ---
@@ -49,11 +51,17 @@ jobs:
             -Dsonar.organization=${{ env.SONAR_ORG }}
             -Dsonar.projectKey=${{ env.SONAR_PROJECT_KEY }}
             -Dsonar.projectName=${{ env.SONAR_PROJECT_NAME }}
+            -Dsonar.projectBaseDir=node-app
 
       - name: SonarCloud Quality Gate
         id: quality_gate
         uses: SonarSource/sonarcloud-github-action@v2
         with:
+          args: >
+            -Dsonar.organization=${{ env.SONAR_ORG }}
+            -Dsonar.projectKey=${{ env.SONAR_PROJECT_KEY }}
+            -Dsonar.projectName=${{ env.SONAR_PROJECT_NAME }}
+            -Dsonar.projectBaseDir=node-app
           check_quality_gate: true
         env:
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
@@ -69,26 +77,29 @@ jobs:
 
       - name: Build Docker image
         if: steps.quality_gate.outcome == 'success'
+        working-directory: node-app
         run: |
           docker build -t "${{ steps.meta.outputs.TAG }}" -t "${{ steps.meta.outputs.LATEST }}" .
 
       # --- Snyk scans: dependencies & container ---
       - name: Setup Snyk
         if: steps.quality_gate.outcome == 'success'
-        uses: snyk/actions/setup@v4
+        uses: snyk/actions/setup@v1
         with:
           token: ${{ secrets.SNYK_TOKEN }}
 
       - name: Snyk Open Source (Node deps)
         if: steps.quality_gate.outcome == 'success'
+        working-directory: node-app
         run: |
-          # Fail on High+ (adjust threshold as required by assessment)
+          # Fail on High+
           snyk test --severity-threshold=high
         env:
           SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
 
       - name: Snyk Container (built image)
         if: steps.quality_gate.outcome == 'success'
+        working-directory: node-app
         run: |
           # Scan final image; fail on High+
           snyk container test "${{ steps.meta.outputs.LATEST }}" --severity-threshold=high

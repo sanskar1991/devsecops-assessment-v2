@@ -96,7 +96,6 @@
 
 - `npm start` - Start the application in production mode
 - `npm run dev` - Start the application in development mode with auto-reload
-- `npm run lint` - Run ESLint
 - `npm run health` - Check application health endpoint
 
 ## Environment Variables (Node.js)
@@ -135,17 +134,3 @@ This approach:
 - Improves security by excluding dev dependencies
 - Uses non-root user for container security
 - Includes health checks for container orchestration
-
-## Notes
-
-### Dependency Override
-
-The `package.json` includes an override for `cross-spawn` to address a vulnerability:
-
-```json
-"overrides": {
-  "cross-spawn": "7.0.5"
-}
-```
-
-This was necessary because `eslint@8.57.1` depends on `cross-spawn@7.0.6` which had a vulnerability. The override pins it to version `7.0.5`.

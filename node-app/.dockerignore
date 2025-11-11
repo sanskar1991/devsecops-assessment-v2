@@ -7,7 +7,7 @@ Dockerfile
 .env
 coverage
 .env
-.env.example
+# .env.example
 .github
 .vscode
 .editorconfig
