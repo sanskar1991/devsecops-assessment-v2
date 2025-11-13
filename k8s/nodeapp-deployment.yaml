@@ -1,0 +1,119 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: nodeapp
+  namespace: devsecops
+  labels:
+    app: nodeapp
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: nodeapp
+  template:
+    metadata:
+      labels:
+        app: nodeapp
+      annotations:
+        container.apparmor.security.beta.kubernetes.io/nodeapp: runtime/default
+    spec:
+      serviceAccountName: nodeapp
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 10001
+        runAsGroup: 10001
+        fsGroup: 10001
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+        - name: nodeapp
+          image: ghcr.io/sanskar1991/devsecops-assessment-v2:latest
+          imagePullPolicy: IfNotPresent
+          ports:
+            - containerPort: 3000
+          env:
+            - name: APP_ENV
+              valueFrom:
+                configMapKeyRef:
+                  name: nodeapp-config
+                  key: APP_ENV
+            - name: NODE_ENV
+              valueFrom:
+                configMapKeyRef:
+                  name: nodeapp-config
+                  key: NODE_ENV
+            - name: PORT
+              valueFrom:
+                configMapKeyRef:
+                  name: nodeapp-config
+                  key: PORT
+            - name: RATE_LIMIT_WINDOW_MS
+              valueFrom:
+                configMapKeyRef:
+                  name: nodeapp-config
+                  key: RATE_LIMIT_WINDOW_MS
+            - name: RATE_LIMIT_MAX
+              valueFrom:
+                configMapKeyRef:
+                  name: nodeapp-config
+                  key: RATE_LIMIT_MAX
+            - name: APP_DB_NAME
+              valueFrom:
+                configMapKeyRef:
+                  name: nodeapp-config
+                  key: APP_DB_NAME
+            - name: APP_DB_AUTHDB
+              valueFrom:
+                configMapKeyRef:
+                  name: nodeapp-config
+                  key: APP_DB_AUTHDB
+            - name: APP_DB_USERNAME
+              valueFrom:
+                secretKeyRef:
+                  name: nodeapp-secret
+                  key: APP_DB_USERNAME
+            - name: APP_DB_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: nodeapp-secret
+                  key: APP_DB_PASSWORD
+            - name: MONGODB_URI
+              valueFrom:
+                secretKeyRef:
+                  name: nodeapp-secret
+                  key: MONGODB_URI
+          readinessProbe:
+            httpGet:
+              path: /readyz
+              port: 3000
+            initialDelaySeconds: 5
+            periodSeconds: 10
+            timeoutSeconds: 2
+            failureThreshold: 3
+          livenessProbe:
+            httpGet:
+              path: /healthz
+              port: 3000
+            initialDelaySeconds: 15
+            periodSeconds: 20
+            timeoutSeconds: 2
+            failureThreshold: 3
+          resources:
+            requests:
+              cpu: "100m"
+              memory: "128Mi"
+            limits:
+              cpu: "500m"
+              memory: "512Mi"
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop: ["ALL"]
+          volumeMounts:
+            - name: tmp
+              mountPath: /tmp
+      volumes:
+        - name: tmp
+          emptyDir:
+            medium: Memory

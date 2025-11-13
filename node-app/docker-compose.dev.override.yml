@@ -1,0 +1,17 @@
+version: "3.9"
+
+services:
+  mongodb:
+    # Dev: trivial healthcheck that always passes
+    healthcheck:
+      test: ["CMD-SHELL", "echo 'dev healthcheck: always healthy'"]
+      interval: 10s
+      timeout: 3s
+      retries: 1
+      start_period: 0s
+
+  app:
+    # Dev: don’t wait on health status, just ensure Mongo container is started
+    depends_on:
+      - mongodb
+    # Dev: allow writes to container FS

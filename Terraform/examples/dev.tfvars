@@ -1,0 +1,11 @@
+project_name       = "devsecops-assessment"
+environment        = "dev"
+aws_region         = "us-east-1"
+vpc_cidr           = "10.0.0.0/16"
+az_count           = 2
+create_nat_gateway = true
+eks_cluster_version = "1.29"
+node_instance_types = ["t3.medium"]
+desired_size        = 2
+min_size            = 1
+max_size            = 3
