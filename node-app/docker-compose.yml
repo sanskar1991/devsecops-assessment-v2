@@ -1,33 +1,73 @@
-version: '3.9'
+name: devsecops-stack
 
 services:
   mongodb:
     image: mongo:7.0
-    container_name: devsecops-mongodb
+    platform: linux/amd64
+    container_name: ${COMPOSE_PROJECT_NAME:-devsecops}-mongodb
     restart: unless-stopped
-    ports:
-      - "27017:27017"
     environment:
-      MONGO_INITDB_DATABASE: devsecops
+      # Root creds
+      MONGO_INITDB_ROOT_USERNAME: ${MONGO_ROOT_USERNAME}
+      MONGO_INITDB_ROOT_PASSWORD: ${MONGO_ROOT_PASSWORD}
+      MONGO_INITDB_DATABASE: ${APP_DB_NAME:-devsecops}
     volumes:
       - mongodb_data:/data/db
+      # Creates an app-scoped user
+      - ./db-init/app-user.js:/docker-entrypoint-initdb.d/app-user.js:ro
+    # healthcheck:
+    #   # Simple ping using mongosh; if it fails, container becomes unhealthy
+    #   test: >
+    #     mongosh --username $${MONGO_INITDB_ROOT_USERNAME} --password $${MONGO_INITDB_ROOT_PASSWORD}
+    #     --authenticationDatabase admin --quiet
+    #     --eval "db.runCommand({ ping: 1 }).ok" | grep -q 1 || exit 1
+    #   interval: 15s
+    #   timeout: 10s
+    #   retries: 5
+    #   start_period: 20s
+    networks:
+      - backend
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+
   app:
-    build:
-      context: .
-      dockerfile: Dockerfile
-    container_name: devsecops-app
+    # For dev, rebuild this image locally and for prod, CI pushes it to GHCR
+    image: ${APP_IMAGE:-ghcr.io/sanskar1991/devsecops-assessment-v2:latest}
+    platform: linux/amd64
+    container_name: ${COMPOSE_PROJECT_NAME:-devsecops}-app
     restart: unless-stopped
-    ports:
-      - "3000:3000"
-    environment:
-      NODE_ENV: production
-      PORT: 3000
-      MONGODB_URI: mongodb://mongodb:27017/devsecops
-      RATE_LIMIT_WINDOW_MS: 60000
-      RATE_LIMIT_MAX: 100
     depends_on:
       - mongodb
-    
+    environment:
+      APP_ENV: ${APP_ENV:-development}
+      NODE_ENV: ${NODE_ENV:-production}
+      PORT: ${APP_PORT:-3000}
+      RATE_LIMIT_WINDOW_MS: ${RATE_LIMIT_WINDOW_MS:-60000}
+      RATE_LIMIT_MAX: ${RATE_LIMIT_MAX:-100}
+      # Creats least-privilege DB user
+      MONGODB_URI: mongodb://${APP_DB_USERNAME}:${APP_DB_PASSWORD}@mongodb:27017/${APP_DB_NAME:-devsecops}?authSource=${APP_DB_AUTHDB:-devsecops}
+    ports:
+      - "${APP_PORT:-3000}:3000"
+    # Defaults
+    read_only: ${APP_READONLY_FS:-true}
+    tmpfs:
+      - /tmp:rw,noexec,nosuid,size=64m
+    security_opt:
+      - no-new-privileges:true
+    networks:
+      - backend
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+
 volumes:
   mongodb_data:
-    driver: local
+
+networks:
+  backend:
+    driver: bridge
