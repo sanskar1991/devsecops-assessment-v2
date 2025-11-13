@@ -1,0 +1,41 @@
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: default-deny-all
+  namespace: devsecops
+spec:
+  podSelector: {}
+  policyTypes: ["Ingress", "Egress"]
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: nodeapp-allow
+  namespace: devsecops
+spec:
+  podSelector:
+    matchLabels:
+      app: nodeapp
+  ingress:
+    - from:
+        - podSelector:
+            matchLabels:
+              app: nodeapp
+      ports:
+        - port: 3000
+          protocol: TCP
+  egress:
+    - to:
+        - podSelector:
+            matchLabels:
+              app: mongodb
+      ports:
+        - port: 27017
+          protocol: TCP
+    - to:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: kube-system
+      ports:
+        - port: 53
+          protocol: UDP

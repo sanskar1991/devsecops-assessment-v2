@@ -1,0 +1,22 @@
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: nodeapp
+  namespace: devsecops
+  annotations:
+    kubernetes.io/ingress.class: nginx
+    # Keep client IP and some basic hardening knobs
+    nginx.ingress.kubernetes.io/proxy-body-size: "1m"
+    nginx.ingress.kubernetes.io/ssl-redirect: "false"
+spec:
+  rules:
+    - host: nodeapp.localtest.me
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: nodeapp
+                port:
+                  number: 3000
